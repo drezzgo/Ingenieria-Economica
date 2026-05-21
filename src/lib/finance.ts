@@ -11,6 +11,17 @@ export interface AmortizationPeriod {
 }
 
 /**
+ * Estructura que representa cada período en una simulación de capitalización (ahorro/crecimiento).
+ */
+export interface CapitalizationPeriod {
+  period: number;          // Número de período
+  beginningBalance: number; // Saldo inicial
+  deposit: number;          // Depósito periódico efectuado en el período
+  interest: number;         // Interés ganado en el período
+  endingBalance: number;    // Saldo final acumulado
+}
+
+/**
  * Convierte una tasa nominal anual (j) con composición de períodos en el año a tasa efectiva para ese mismo período.
  * Fórmula: i = (1 + j/n)^n - 1
  * 
@@ -157,5 +168,77 @@ export function calculateGermanAmortization(
     balance = endingBalance;
   }
 
+  return schedule;
+}
+
+/**
+ * Simulación de capitalización de un monto inicial fijo (Interés Compuesto clásico).
+ * Fórmula: S_t = S_{t-1} * (1 + r)
+ * 
+ * @param principal Depósito inicial único
+ * @param periodicRate Tasa de interés periódica de crecimiento (por ejemplo, rendimiento mensual)
+ * @param periods Número total de períodos
+ * @returns Tabla de acumulación del ahorro
+ */
+export function calculateCompoundCapitalization(
+  principal: number,
+  periodicRate: number,
+  periods: number
+): CapitalizationPeriod[] {
+  if (principal <= 0 || periods <= 0) {
+    return [];
+  }
+  const schedule: CapitalizationPeriod[] = [];
+  let balance = principal;
+
+  for (let t = 1; t <= periods; t++) {
+    const interest = balance * periodicRate;
+    const endingBalance = balance + interest;
+    schedule.push({
+      period: t,
+      beginningBalance: balance,
+      deposit: t === 1 ? principal : 0, // El depósito inicial se reporta solo en el período 1
+      interest: interest,
+      endingBalance: endingBalance
+    });
+    balance = endingBalance;
+  }
+  return schedule;
+}
+
+/**
+ * Simulación de capitalización con depósitos periódicos constantes (Serie Uniforme de Capitalización / Anualidad de ahorro).
+ * En este caso ordinario: en cada mes se inicia con el saldo anterior, se genera interés, y al final se suma el depósito.
+ * Fórmula del período t: S_t = S_{t-1} * (1 + r) + R
+ * 
+ * @param deposit Depósito constante periódico (ahorro mensual)
+ * @param periodicRate Tasa de interés periódica de crecimiento (rendimiento mensual)
+ * @param periods Número total de períodos
+ * @returns Tabla de acumulación de ahorro estructurada
+ */
+export function calculateAnnuityCapitalization(
+  deposit: number,
+  periodicRate: number,
+  periods: number
+): CapitalizationPeriod[] {
+  if (deposit <= 0 || periods <= 0) {
+    return [];
+  }
+  const schedule: CapitalizationPeriod[] = [];
+  let balance = 0;
+
+  for (let t = 1; t <= periods; t++) {
+    const beginningBalance = balance;
+    const interest = beginningBalance * periodicRate;
+    const endingBalance = beginningBalance + interest + deposit;
+    schedule.push({
+      period: t,
+      beginningBalance: beginningBalance,
+      deposit: deposit,
+      interest: interest,
+      endingBalance: endingBalance
+    });
+    balance = endingBalance;
+  }
   return schedule;
 }

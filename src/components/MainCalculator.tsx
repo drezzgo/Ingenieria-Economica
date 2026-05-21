@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
+import { animate, stagger } from 'animejs';
 import {
   nominalToEffective,
   effectiveToNominal,
@@ -6,315 +7,618 @@ import {
   advanceToArrears,
   calculateFrenchAmortization,
   calculateGermanAmortization,
-  type AmortizationPeriod
+  calculateCompoundCapitalization,
+  calculateAnnuityCapitalization,
+  type AmortizationPeriod,
+  type CapitalizationPeriod
 } from '../lib/finance';
+import { RosenBarChart, RosenLineChart } from './Rosenchart';
+import EducationalSection from './EducationalSection';
+
+type Tab = 'tasas' | 'creditos' | 'capitalizacion' | 'educacion';
 
 export default function MainCalculator() {
-  // Estados para datos de prueba modificables
-  const [nominalRate, setNominalRate] = useState<number>(0.24); // 24%
-  const [periodsPerYear, setPeriodsPerYear] = useState<number>(12); // Mensual
-  const [effectiveRate, setEffectiveRate] = useState<number>(0.2682); // 26.82%
-  const [arrearsRate, setArrearsRate] = useState<number>(0.02); // 2%
-  const [advanceRate, setAdvanceRate] = useState<number>(0.0196); // 1.96%
-  
-  const [principal, setPrincipal] = useState<number>(10000); // $10,000 USD/COP
-  const [periodicRate, setPeriodicRate] = useState<number>(0.02); // 2% mensual
-  const [periods, setPeriods] = useState<number>(5); // 5 meses
+  const [activeTab, setActiveTab] = useState<Tab>('tasas');
 
-  // Estado para guardar el historial del "Consola Simulada" en la interfaz
-  const [consoleLogs, setConsoleLogs] = useState<string[]>([]);
-
-  // Función para agregar logs a la consola simulada
-  const addLog = (message: string) => {
-    setConsoleLogs((prev) => [...prev, message]);
-  };
-
-  // Función para ejecutar las conversiones y cálculos e imprimirlos en la consola
-  const handleExecute = () => {
-    setConsoleLogs([]); // Limpiar consola simulada
-    console.clear();
-
-    const timestamp = new Date().toLocaleTimeString();
-    addLog(`[${timestamp}] === INICIANDO PRUEBAS DE EQUI UD ===`);
-    addLog(`(Abre la consola de desarrollo del navegador [F12] para ver el desglose completo en formato interactivo)`);
-
-    console.group(`%c Equi UD - Pruebas Financieras (${timestamp}) `, 'background: #A91D22; color: #FFF; font-weight: bold; font-size: 14px; padding: 4px; border-radius: 4px;');
-
-    // 1. Nominal a Efectiva
-    try {
-      const eff = nominalToEffective(nominalRate, periodsPerYear);
-      const text = `Tasa Nominal Anual de ${(nominalRate * 100).toFixed(2)}% con capitalización de ${periodsPerYear} períodos al año equivale a una Tasa Efectiva Anual (E.A.) de ${(eff * 100).toFixed(4)}%`;
-      console.log(`%c[Nominal a Efectiva]%c ${text}`, 'color: #A91D22; font-weight: bold;', 'color: inherit;');
-      addLog(`👉 Nominal a Efectiva: ${text}`);
-    } catch (error: any) {
-      console.error("Error en Nominal a Efectiva:", error.message);
-      addLog(`❌ Error en Nominal a Efectiva: ${error.message}`);
-    }
-
-    // 2. Efectiva a Nominal
-    try {
-      const nom = effectiveToNominal(effectiveRate, periodsPerYear);
-      const text = `Tasa Efectiva Anual (E.A.) de ${(effectiveRate * 100).toFixed(2)}% capitalizable ${periodsPerYear} veces al año equivale a una Tasa Nominal Anual (T.N.A.) de ${(nom * 100).toFixed(4)}%`;
-      console.log(`%c[Efectiva a Nominal]%c ${text}`, 'color: #A91D22; font-weight: bold;', 'color: inherit;');
-      addLog(`👉 Efectiva a Nominal: ${text}`);
-    } catch (error: any) {
-      console.error("Error en Efectiva a Nominal:", error.message);
-      addLog(`❌ Error en Efectiva a Nominal: ${error.message}`);
-    }
-
-    // 3. Vencida a Anticipada
-    try {
-      const ant = arrearsToAdvance(arrearsRate);
-      const text = `Tasa Periódica Vencida de ${(arrearsRate * 100).toFixed(2)}% equivale a una Tasa Periódica Anticipada de ${(ant * 100).toFixed(4)}%`;
-      console.log(`%c[Vencida a Anticipada]%c ${text}`, 'color: #D97706; font-weight: bold;', 'color: inherit;');
-      addLog(`👉 Vencida a Anticipada: ${text}`);
-    } catch (error: any) {
-      console.error("Error en Vencida a Anticipada:", error.message);
-      addLog(`❌ Error en Vencida a Anticipada: ${error.message}`);
-    }
-
-    // 4. Anticipada a Vencida
-    try {
-      const ven = advanceToArrears(advanceRate);
-      const text = `Tasa Periódica Anticipada de ${(advanceRate * 100).toFixed(2)}% equivale a una Tasa Periódica Vencida de ${(ven * 100).toFixed(4)}%`;
-      console.log(`%c[Anticipada a Vencida]%c ${text}`, 'color: #D97706; font-weight: bold;', 'color: inherit;');
-      addLog(`👉 Anticipada a Vencida: ${text}`);
-    } catch (error: any) {
-      console.error("Error en Anticipada a Vencida:", error.message);
-      addLog(`❌ Error en Anticipada a Vencida: ${error.message}`);
-    }
-
-    // 5. Amortización Francesa
-    try {
-      const frenchSchedule = calculateFrenchAmortization(principal, periodicRate, periods);
-      console.group(`%c Amortización Francesa (Cuota Fija) - Principal: $${principal} - Tasa Periódica: ${(periodicRate * 100).toFixed(2)}% - Plazo: ${periods} meses `, 'color: #FFF; background: #2563EB; font-weight: bold; padding: 2px;');
-      console.table(frenchSchedule.map(p => ({
-        Período: p.period,
-        'Saldo Inicial': `$${p.beginningBalance.toFixed(2)}`,
-        Cuota: `$${p.payment.toFixed(2)}`,
-        Interés: `$${p.interest.toFixed(2)}`,
-        Capital: `$${p.principal.toFixed(2)}`,
-        'Saldo Final': `$${p.endingBalance.toFixed(2)}`
-      })));
-      console.groupEnd();
-      
-      const totalFrenchInterest = frenchSchedule.reduce((sum, p) => sum + p.interest, 0);
-      const frenchText = `Amortización Francesa completada. Cuota fija mensual: $${(frenchSchedule[0]?.payment || 0).toFixed(2)}. Total Intereses: $${totalFrenchInterest.toFixed(2)}`;
-      addLog(`👉 Amortización Francesa: ${frenchText} (Ver tabla en consola del desarrollador)`);
-    } catch (error: any) {
-      console.error("Error en Amortización Francesa:", error.message);
-      addLog(`❌ Error en Amortización Francesa: ${error.message}`);
-    }
-
-    // 6. Amortización Alemana
-    try {
-      const germanSchedule = calculateGermanAmortization(principal, periodicRate, periods);
-      console.group(`%c Amortización Alemana (Abono Constante a Capital) - Principal: $${principal} - Tasa Periódica: ${(periodicRate * 100).toFixed(2)}% - Plazo: ${periods} meses `, 'color: #FFF; background: #059669; font-weight: bold; padding: 2px;');
-      console.table(germanSchedule.map(p => ({
-        Período: p.period,
-        'Saldo Inicial': `$${p.beginningBalance.toFixed(2)}`,
-        Cuota: `$${p.payment.toFixed(2)}`,
-        Interés: `$${p.interest.toFixed(2)}`,
-        'Abono Capital': `$${p.principal.toFixed(2)}`,
-        'Saldo Final': `$${p.endingBalance.toFixed(2)}`
-      })));
-      console.groupEnd();
-
-      const totalGermanInterest = germanSchedule.reduce((sum, p) => sum + p.interest, 0);
-      const germanText = `Amortización Alemana completada. Abono constante a capital: $${(germanSchedule[0]?.principal || 0).toFixed(2)}. Total Intereses: $${totalGermanInterest.toFixed(2)}`;
-      addLog(`👉 Amortización Alemana: ${germanText} (Ver tabla en consola del desarrollador)`);
-    } catch (error: any) {
-      console.error("Error en Amortización Alemana:", error.message);
-      addLog(`❌ Error en Amortización Alemana: ${error.message}`);
-    }
-
-    console.groupEnd();
-    addLog(`[${new Date().toLocaleTimeString()}] === FIN DE LAS PRUEBAS ===`);
-  };
-
-  // Ejecutar automáticamente al cargar para cumplir con el requerimiento de que por ahora imprima al iniciar con datos de prueba
+  // BRANDING ANIMATION ON MOUNT
+  const brandRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
-    handleExecute();
+    animate('.brand-char', {
+      translateY: [30, 0],
+      opacity: [0, 1],
+      delay: stagger(60),
+      duration: 1000,
+      ease: 'outElastic(1, 0.6)'
+    });
   }, []);
+
+  // TAB TRANSITION ANIMATION
+  useEffect(() => {
+    animate('.tab-content-wrapper', {
+      opacity: [0, 1],
+      translateY: [15, 0],
+      duration: 400,
+      ease: 'outCubic'
+    });
+  }, [activeTab]);
+
+  // ==========================================
+  // ESTADOS - TAB 1: CONVERSIÓN DE TASAS
+  // ==========================================
+  const [jRate, setJRate] = useState<number>(0.24); // Nominal Anual (j)
+  const [mPeriods, setMPeriods] = useState<number>(12); // Capitalizaciones/año
+  const [iResult, setIResult] = useState<number>(0);
+  
+  const [iRateInput, setIRateInput] = useState<number>(0.26824); // Efectiva Anual (i)
+  const [jResult, setJResult] = useState<number>(0);
+
+  const [ivRate, setIvRate] = useState<number>(0.02); // Periódica Vencida
+  const [iaResult, setIaResult] = useState<number>(0);
+
+  const [iaRate, setIaRate] = useState<number>(0.0196); // Periódica Anticipada
+  const [ivResult, setIvResult] = useState<number>(0);
+
+  // Efecto para calcular tasas en tiempo real
+  useEffect(() => {
+    try {
+      setIResult(nominalToEffective(jRate, mPeriods));
+    } catch {
+      setIResult(0);
+    }
+  }, [jRate, mPeriods]);
+
+  useEffect(() => {
+    try {
+      setJResult(effectiveToNominal(iRateInput, mPeriods));
+    } catch {
+      setJResult(0);
+    }
+  }, [iRateInput, mPeriods]);
+
+  useEffect(() => {
+    try {
+      setIaResult(arrearsToAdvance(ivRate));
+    } catch {
+      setIaResult(0);
+    }
+  }, [ivRate]);
+
+  useEffect(() => {
+    try {
+      setIvResult(advanceToArrears(iaRate));
+    } catch {
+      setIvResult(0);
+    }
+  }, [iaRate]);
+
+  // ==========================================
+  // ESTADOS - TAB 2: AMORTIZACIÓN (CRÉDITOS)
+  // ==========================================
+  const [loanAmount, setLoanAmount] = useState<number>(12000);
+  const [loanRate, setLoanRate] = useState<number>(0.018); // Tasa periódica mensual
+  const [loanPeriods, setLoanPeriods] = useState<number>(12); // meses
+
+  const [frenchSchedule, setFrenchSchedule] = useState<AmortizationPeriod[]>([]);
+  const [germanSchedule, setGermanSchedule] = useState<AmortizationPeriod[]>([]);
+
+  useEffect(() => {
+    setFrenchSchedule(calculateFrenchAmortization(loanAmount, loanRate, loanPeriods));
+    setGermanSchedule(calculateGermanAmortization(loanAmount, loanRate, loanPeriods));
+  }, [loanAmount, loanRate, loanPeriods]);
+
+  const totalFrenchInterest = frenchSchedule.reduce((sum, p) => sum + p.interest, 0);
+  const totalGermanInterest = germanSchedule.reduce((sum, p) => sum + p.interest, 0);
+
+  const maxTotalPaid = Math.max(loanAmount + totalFrenchInterest, loanAmount + totalGermanInterest);
+
+  // ==========================================
+  // ESTADOS - TAB 3: CAPITALIZACIÓN (AHORRO)
+  // ==========================================
+  const [capAmount, setCapAmount] = useState<number>(500); // Depósito periódico o inicial
+  const [capRate, setCapRate] = useState<number>(0.01); // Rendimiento mensual (1%)
+  const [capPeriods, setCapPeriods] = useState<number>(12); // Meses
+
+  const [compoundSchedule, setCompoundSchedule] = useState<CapitalizationPeriod[]>([]);
+  const [annuitySchedule, setAnnuitySchedule] = useState<CapitalizationPeriod[]>([]);
+
+  useEffect(() => {
+    setCompoundSchedule(calculateCompoundCapitalization(capAmount, capRate, capPeriods));
+    setAnnuitySchedule(calculateAnnuityCapitalization(capAmount, capRate, capPeriods));
+  }, [capAmount, capRate, capPeriods]);
 
   return (
     <div className="space-y-8">
-      {/* Title & Academic Info Header Card */}
-      <div className="bg-neutral-50 rounded-2xl border border-neutral-100 p-6 sm:p-8">
-        <div className="max-w-3xl">
-          <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-red-50 text-red-700 border border-red-100 mb-4">
-            Ingeniería Económica
-          </span>
-          <h1 className="text-3xl sm:text-4xl font-extrabold text-neutral-900 tracking-tight">
-            Plataforma de Cálculos Financieros <span className="text-red-600">Equi UD</span>
-          </h1>
-          <p className="mt-3 text-lg text-neutral-600 leading-relaxed">
-            Software diseñado para la conversión de tasas de interés y la generación de planes de amortización
-            (Sistema Francés y Alemán). Utiliza el botón inferior para disparar las pruebas y observar
-            los desgloses matemáticos detallados tanto en la terminal simulada como en la consola del navegador.
+      {/* BRANDING HEADER - EQUIX UD */}
+      <div className="bg-white/40 backdrop-blur-md border border-neutral-100 rounded-3xl p-6 sm:p-8 flex flex-col md:flex-row justify-between items-start md:items-center gap-6 shadow-sm">
+        <div ref={brandRef} className="space-y-2">
+          {/* Animate Text Branding */}
+          <div className="flex overflow-hidden">
+            {Array.from("Equis UD").map((char, index) => {
+              const isUD = char === 'U' || char === 'D';
+              return (
+                <span
+                  key={index}
+                  className={`brand-char text-3xl sm:text-4xl font-extrabold tracking-tight inline-block ${
+                    isUD ? 'text-red-600' : 'text-neutral-900'
+                  }`}
+                >
+                  {char === ' ' ? '\u00A0' : char}
+                </span>
+              );
+            })}
+          </div>
+          <p className="text-neutral-500 text-sm font-medium">
+            Plataforma de Ingeniería Económica · Facultad de Ingeniería
           </p>
+        </div>
+
+        {/* Dynamic Tab Navigation (Apple style pill list) */}
+        <div className="flex bg-neutral-100/80 p-1.5 rounded-2xl border border-neutral-200/50 w-full md:w-auto overflow-x-auto">
+          {(['tasas', 'creditos', 'capitalizacion', 'educacion'] as const).map((tab) => {
+            const isSelected = activeTab === tab;
+            return (
+              <button
+                key={tab}
+                onClick={() => setActiveTab(tab)}
+                className={`flex-1 md:flex-none py-2.5 px-4 rounded-xl text-xs font-semibold tracking-tight transition-all duration-350 cursor-pointer text-center capitalize ${
+                  isSelected
+                    ? 'bg-white text-red-700 shadow-sm border border-neutral-200/30 scale-[1.02]'
+                    : 'text-neutral-600 hover:text-neutral-950'
+                }`}
+              >
+                {tab === 'tasas' && 'Conversión Tasas'}
+                {tab === 'creditos' && 'Simulador Crédito'}
+                {tab === 'capitalizacion' && 'Ahorro / Capitalización'}
+                {tab === 'educacion' && 'Módulo Educativo'}
+              </button>
+            );
+          })}
         </div>
       </div>
 
-      {/* Main Layout Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+      {/* SPA DYNAMIC TAB WRAPPER */}
+      <div className="tab-content-wrapper min-h-[480px]">
         
-        {/* Interactive Test Parameters Form */}
-        <div className="lg:col-span-5 bg-white border border-neutral-100 rounded-2xl shadow-sm p-6 space-y-6">
-          <div className="border-b border-neutral-100 pb-4">
-            <h2 className="text-lg font-bold text-neutral-950">Datos de Prueba</h2>
-            <p className="text-xs text-neutral-500 mt-1">Configura los parámetros financieros para ejecutar las funciones.</p>
-          </div>
-
-          {/* Section 1: Rates */}
-          <div className="space-y-4">
-            <h3 className="text-xs font-semibold text-red-600 uppercase tracking-wider">Tasas de Interés</h3>
+        {/* ======================================================= */}
+        {/* TAB 1: CONVERSIÓN DE TASAS */}
+        {/* ======================================================= */}
+        {activeTab === 'tasas' && (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
             
-            <div className="grid grid-cols-2 gap-4">
+            {/* CARD 1: Nominal Anual <-> Efectiva Anual */}
+            <div className="bg-white/60 backdrop-blur-xl border border-neutral-100 rounded-3xl p-6 sm:p-8 shadow-sm flex flex-col justify-between">
+              <div className="space-y-6">
+                <div>
+                  <span className="text-xs font-bold text-red-600 uppercase tracking-wider block mb-1">
+                    Equivalencia Financiera
+                  </span>
+                  <h3 className="text-xl font-bold text-neutral-950">
+                    Tasas Nominales y Efectivas
+                  </h3>
+                  <p className="text-xs text-neutral-500 mt-1">
+                    Relaciona la tasa de interés pactada nominal (j) con el impacto real efectiva anual (i).
+                  </p>
+                </div>
+
+                <div className="space-y-4">
+                  {/* Nominal Input */}
+                  <div>
+                    <label className="block text-xs font-semibold text-neutral-700 mb-1.5">
+                      Tasa Nominal Anual (j): {(jRate * 100).toFixed(2)}%
+                    </label>
+                    <input
+                      type="range"
+                      min="0.01"
+                      max="1.0"
+                      step="0.01"
+                      value={jRate}
+                      onChange={(e) => setJRate(parseFloat(e.target.value))}
+                      className="w-full h-1.5 bg-neutral-100 rounded-lg appearance-none cursor-pointer accent-red-600"
+                    />
+                  </div>
+
+                  {/* Compounding Input */}
+                  <div>
+                    <label className="block text-xs font-semibold text-neutral-700 mb-1.5">
+                      Frecuencia de Capitalización al Año (n): {mPeriods}
+                    </label>
+                    <select
+                      value={mPeriods}
+                      onChange={(e) => setMPeriods(parseInt(e.target.value))}
+                      className="w-full text-xs px-3.5 py-2.5 bg-neutral-50 border border-neutral-200 rounded-xl focus:outline-none focus:border-red-500 focus:bg-white transition-colors"
+                    >
+                      <option value={12}>12 (Mensual)</option>
+                      <option value={6}>6 (Bimestral)</option>
+                      <option value={4}>4 (Trimestral)</option>
+                      <option value={2}>2 (Semestral)</option>
+                      <option value={1}>1 (Anual)</option>
+                      <option value={365}>365 (Diaria)</option>
+                    </select>
+                  </div>
+
+                  {/* Effective Input */}
+                  <div>
+                    <label className="block text-xs font-semibold text-neutral-700 mb-1.5">
+                      Tasa Efectiva Anual (i): {(iRateInput * 100).toFixed(2)}%
+                    </label>
+                    <input
+                      type="range"
+                      min="0.01"
+                      max="1.5"
+                      step="0.01"
+                      value={iRateInput}
+                      onChange={(e) => setIRateInput(parseFloat(e.target.value))}
+                      className="w-full h-1.5 bg-neutral-100 rounded-lg appearance-none cursor-pointer accent-amber-500"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Outputs Displays */}
+              <div className="mt-8 pt-6 border-t border-neutral-100 grid grid-cols-2 gap-4">
+                <div className="bg-neutral-50 rounded-2xl p-4 border border-neutral-150">
+                  <span className="text-[10px] text-neutral-500 font-bold block uppercase tracking-wide">
+                    Efectiva Anual Calc
+                  </span>
+                  <span className="text-lg font-extrabold text-red-700 block mt-1">
+                    {(iResult * 100).toFixed(4)}%
+                  </span>
+                </div>
+                <div className="bg-neutral-50 rounded-2xl p-4 border border-neutral-150">
+                  <span className="text-[10px] text-neutral-500 font-bold block uppercase tracking-wide">
+                    Nominal Anual Calc
+                  </span>
+                  <span className="text-lg font-extrabold text-amber-600 block mt-1">
+                    {(jResult * 100).toFixed(4)}%
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* CARD 2: Vencida <-> Anticipada */}
+            <div className="bg-white/60 backdrop-blur-xl border border-neutral-100 rounded-3xl p-6 sm:p-8 shadow-sm flex flex-col justify-between">
+              <div className="space-y-6">
+                <div>
+                  <span className="text-xs font-bold text-amber-500 uppercase tracking-wider block mb-1">
+                    Estructura de Vencimiento
+                  </span>
+                  <h3 className="text-xl font-bold text-neutral-950">
+                    Tasas Vencidas y Anticipadas
+                  </h3>
+                  <p className="text-xs text-neutral-500 mt-1">
+                    Calcula la equivalencia al cambiar el cobro de intereses del fin de mes al inicio de mes.
+                  </p>
+                </div>
+
+                <div className="space-y-5">
+                  {/* Arrears Input */}
+                  <div>
+                    <label className="block text-xs font-semibold text-neutral-700 mb-1.5">
+                      Tasa Periódica Vencida (iv): {(ivRate * 100).toFixed(2)}%
+                    </label>
+                    <input
+                      type="range"
+                      min="0.005"
+                      max="0.2"
+                      step="0.001"
+                      value={ivRate}
+                      onChange={(e) => setIvRate(parseFloat(e.target.value))}
+                      className="w-full h-1.5 bg-neutral-100 rounded-lg appearance-none cursor-pointer accent-red-600"
+                    />
+                  </div>
+
+                  {/* Advance Input */}
+                  <div>
+                    <label className="block text-xs font-semibold text-neutral-700 mb-1.5">
+                      Tasa Periódica Anticipada (ia): {(iaRate * 100).toFixed(2)}%
+                    </label>
+                    <input
+                      type="range"
+                      min="0.005"
+                      max="0.2"
+                      step="0.001"
+                      value={iaRate}
+                      onChange={(e) => setIaRate(parseFloat(e.target.value))}
+                      className="w-full h-1.5 bg-neutral-100 rounded-lg appearance-none cursor-pointer accent-amber-500"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Output Results */}
+              <div className="mt-8 pt-6 border-t border-neutral-100 grid grid-cols-2 gap-4">
+                <div className="bg-neutral-50 rounded-2xl p-4 border border-neutral-150">
+                  <span className="text-[10px] text-neutral-500 font-bold block uppercase tracking-wide">
+                    Anticipada Equiv (ia)
+                  </span>
+                  <span className="text-lg font-extrabold text-red-700 block mt-1">
+                    {(iaResult * 100).toFixed(4)}%
+                  </span>
+                </div>
+                <div className="bg-neutral-50 rounded-2xl p-4 border border-neutral-150">
+                  <span className="text-[10px] text-neutral-500 font-bold block uppercase tracking-wide">
+                    Vencida Equiv (iv)
+                  </span>
+                  <span className="text-lg font-extrabold text-amber-600 block mt-1">
+                    {(ivResult * 100).toFixed(4)}%
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Quick Educational Callout */}
+            <div className="lg:col-span-2 bg-gradient-to-r from-red-600/5 to-amber-500/5 border border-red-500/10 rounded-2xl p-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+              <div className="space-y-1">
+                <span className="text-xs font-bold text-red-700 block">🧑‍🏫 Tip del Profesor de Ingeniería Económica</span>
+                <p className="text-xs text-neutral-600 max-w-2xl leading-relaxed">
+                  "Recuerda que la tasa periódica anticipada siempre será nominalmente inferior a su tasa periódica vencida equivalente,
+                  porque el cobro anticipado disminuye el valor neto del flujo efectivo."
+                </p>
+              </div>
+              <button
+                onClick={() => setActiveTab('educacion')}
+                className="text-xs font-bold text-red-700 bg-red-50 hover:bg-red-100 px-3.5 py-2 rounded-xl transition-colors cursor-pointer whitespace-nowrap"
+              >
+                Ver Explicación Completa
+              </button>
+            </div>
+
+          </div>
+        )}
+
+        {/* ======================================================= */}
+        {/* TAB 2: SIMULADOR DE CRÉDITO */}
+        {/* ======================================================= */}
+        {activeTab === 'creditos' && (
+          <div className="space-y-8">
+            
+            {/* Input Controls */}
+            <div className="bg-white/60 backdrop-blur-xl border border-neutral-100 rounded-3xl p-6 shadow-sm grid grid-cols-1 md:grid-cols-3 gap-6">
               <div>
-                <label className="block text-xs font-medium text-neutral-600 mb-1">Nominal Anual (j)</label>
+                <label className="block text-xs font-bold text-neutral-700 mb-1.5">Monto de Deuda (Capital)</label>
                 <input
                   type="number"
-                  step="0.01"
-                  value={nominalRate}
-                  onChange={(e) => setNominalRate(parseFloat(e.target.value) || 0)}
-                  className="w-full text-sm px-3 py-2 bg-neutral-50 border border-neutral-200 rounded-lg focus:outline-none focus:border-red-500 focus:bg-white transition-colors"
+                  value={loanAmount}
+                  onChange={(e) => setLoanAmount(Math.max(0, parseFloat(e.target.value) || 0))}
+                  className="w-full text-xs px-3.5 py-2.5 bg-neutral-50 border border-neutral-200 rounded-xl focus:outline-none focus:border-red-500 focus:bg-white transition-colors"
                 />
               </div>
+
               <div>
-                <label className="block text-xs font-medium text-neutral-600 mb-1">Períodos al Año (n)</label>
+                <label className="block text-xs font-bold text-neutral-700 mb-1.5">Tasa Periódica Mensual (r): {(loanRate * 100).toFixed(2)}%</label>
+                <input
+                  type="range"
+                  min="0.005"
+                  max="0.1"
+                  step="0.001"
+                  value={loanRate}
+                  onChange={(e) => setLoanRate(parseFloat(e.target.value))}
+                  className="w-full h-1.5 bg-neutral-100 rounded-lg appearance-none cursor-pointer accent-red-600 mt-3"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-neutral-700 mb-1.5">Plazo del Crédito (Meses)</label>
                 <input
                   type="number"
-                  value={periodsPerYear}
-                  onChange={(e) => setPeriodsPerYear(parseInt(e.target.value) || 1)}
-                  className="w-full text-sm px-3 py-2 bg-neutral-50 border border-neutral-200 rounded-lg focus:outline-none focus:border-red-500 focus:bg-white transition-colors"
+                  value={loanPeriods}
+                  onChange={(e) => setLoanPeriods(Math.max(1, parseInt(e.target.value) || 1))}
+                  className="w-full text-xs px-3.5 py-2.5 bg-neutral-50 border border-neutral-200 rounded-xl focus:outline-none focus:border-red-500 focus:bg-white transition-colors"
                 />
               </div>
             </div>
 
-            <div className="grid grid-cols-3 gap-3">
-              <div className="col-span-1">
-                <label className="block text-xs font-medium text-neutral-600 mb-1">Efectiva Anual (i)</label>
-                <input
-                  type="number"
-                  step="0.0001"
-                  value={effectiveRate}
-                  onChange={(e) => setEffectiveRate(parseFloat(e.target.value) || 0)}
-                  className="w-full text-sm px-3 py-2 bg-neutral-50 border border-neutral-200 rounded-lg focus:outline-none focus:border-red-500 focus:bg-white transition-colors"
-                />
-              </div>
-              <div className="col-span-1">
-                <label className="block text-xs font-medium text-neutral-600 mb-1">Periódica Ven. (iv)</label>
-                <input
-                  type="number"
-                  step="0.001"
-                  value={arrearsRate}
-                  onChange={(e) => setArrearsRate(parseFloat(e.target.value) || 0)}
-                  className="w-full text-sm px-3 py-2 bg-neutral-50 border border-neutral-200 rounded-lg focus:outline-none focus:border-red-500 focus:bg-white transition-colors"
-                />
-              </div>
-              <div className="col-span-1">
-                <label className="block text-xs font-medium text-neutral-600 mb-1">Periódica Ant. (ia)</label>
-                <input
-                  type="number"
-                  step="0.001"
-                  value={advanceRate}
-                  onChange={(e) => setAdvanceRate(parseFloat(e.target.value) || 0)}
-                  className="w-full text-sm px-3 py-2 bg-neutral-50 border border-neutral-200 rounded-lg focus:outline-none focus:border-red-500 focus:bg-white transition-colors"
-                />
-              </div>
-            </div>
-          </div>
+            {/* Rosencharts SVG Visualizer */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+              <RosenBarChart
+                title="Comparativa de Interés Total"
+                subtitle="Diferencia de costo de capital generado entre el sistema Francés y el Alemán"
+                data={[
+                  { label: 'Francés (Fijo)', value: totalFrenchInterest, color: '#A91D22' },
+                  { label: 'Alemán (Const)', value: totalGermanInterest, color: '#F4C430' }
+                ]}
+              />
 
-          {/* Section 2: Amortization */}
-          <div className="space-y-4 pt-2">
-            <h3 className="text-xs font-semibold text-amber-500 uppercase tracking-wider">Crédito y Amortización</h3>
-            
-            <div>
-              <label className="block text-xs font-medium text-neutral-600 mb-1">Monto del Crédito (Principal)</label>
-              <input
-                type="number"
-                value={principal}
-                onChange={(e) => setPrincipal(parseFloat(e.target.value) || 0)}
-                className="w-full text-sm px-3 py-2 bg-neutral-50 border border-neutral-200 rounded-lg focus:outline-none focus:border-red-500 focus:bg-white transition-colors"
+              <RosenLineChart
+                title="Evolución del Saldo de la Deuda"
+                subtitle="Plan de amortización por período (mes)"
+                periods={Array.from({ length: loanPeriods + 1 }, (_, i) => i)}
+                series={[
+                  {
+                    name: 'Amortización Francesa',
+                    data: [loanAmount, ...frenchSchedule.map((p) => p.endingBalance)],
+                    color: '#A91D22'
+                  },
+                  {
+                    name: 'Amortización Alemana',
+                    data: [loanAmount, ...germanSchedule.map((p) => p.endingBalance)],
+                    color: '#F4C430'
+                  }
+                ]}
               />
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            {/* Schedules Comparison Table */}
+            <div className="bg-white/60 backdrop-blur-xl border border-neutral-100 rounded-3xl p-6 sm:p-8 shadow-sm overflow-hidden">
+              <div className="flex justify-between items-center border-b border-neutral-100 pb-4 mb-4">
+                <div>
+                  <h3 className="text-sm font-bold text-neutral-900">Tabla Comparativa Detallada</h3>
+                  <p className="text-xs text-neutral-500 mt-0.5">Muestra el desglose de cuotas e intereses de los dos sistemas periódicos.</p>
+                </div>
+              </div>
+
+              <div className="overflow-x-auto max-h-[350px] scrollbar-thin">
+                <table className="w-full text-left border-collapse text-xs">
+                  <thead className="bg-neutral-50/50 sticky top-0 backdrop-blur-sm">
+                    <tr>
+                      <th className="py-2.5 px-4 font-semibold text-neutral-700 border-b border-neutral-100">Mes</th>
+                      <th className="py-2.5 px-4 font-semibold text-neutral-700 border-b border-neutral-100">Cuota Francesa</th>
+                      <th className="py-2.5 px-4 font-semibold text-neutral-700 border-b border-neutral-100">Cuota Alemana</th>
+                      <th className="py-2.5 px-4 font-semibold text-neutral-700 border-b border-neutral-100">Interés Francés</th>
+                      <th className="py-2.5 px-4 font-semibold text-neutral-700 border-b border-neutral-100">Interés Alemán</th>
+                      <th className="py-2.5 px-4 font-semibold text-neutral-700 border-b border-neutral-100">Capital Francés</th>
+                      <th className="py-2.5 px-4 font-semibold text-neutral-700 border-b border-neutral-100">Capital Alemán</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-neutral-50">
+                    {Array.from({ length: loanPeriods }).map((_, idx) => {
+                      const fPeriod = frenchSchedule[idx];
+                      const gPeriod = germanSchedule[idx];
+                      if (!fPeriod || !gPeriod) return null;
+                      return (
+                        <tr key={idx} className="hover:bg-neutral-50/30">
+                          <td className="py-2.5 px-4 font-mono font-medium">{idx + 1}</td>
+                          <td className="py-2.5 px-4 font-mono">${fPeriod.payment.toFixed(2)}</td>
+                          <td className="py-2.5 px-4 font-mono">${gPeriod.payment.toFixed(2)}</td>
+                          <td className="py-2.5 px-4 font-mono text-red-700/80">${fPeriod.interest.toFixed(2)}</td>
+                          <td className="py-2.5 px-4 font-mono text-amber-600/80">${gPeriod.interest.toFixed(2)}</td>
+                          <td className="py-2.5 px-4 font-mono">${fPeriod.principal.toFixed(2)}</td>
+                          <td className="py-2.5 px-4 font-mono">${gPeriod.principal.toFixed(2)}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+          </div>
+        )}
+
+        {/* ======================================================= */}
+        {/* TAB 3: CAPITALIZACIÓN */}
+        {/* ======================================================= */}
+        {activeTab === 'capitalizacion' && (
+          <div className="space-y-8">
+            
+            {/* Input Controls */}
+            <div className="bg-white/60 backdrop-blur-xl border border-neutral-100 rounded-3xl p-6 shadow-sm grid grid-cols-1 md:grid-cols-3 gap-6">
               <div>
-                <label className="block text-xs font-medium text-neutral-600 mb-1">Tasa Periódica (r)</label>
+                <label className="block text-xs font-bold text-neutral-700 mb-1.5">Monto de Depósito ($)</label>
                 <input
                   type="number"
+                  value={capAmount}
+                  onChange={(e) => setCapAmount(Math.max(0, parseFloat(e.target.value) || 0))}
+                  className="w-full text-xs px-3.5 py-2.5 bg-neutral-50 border border-neutral-200 rounded-xl focus:outline-none focus:border-red-500 focus:bg-white transition-colors"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-neutral-700 mb-1.5">Tasa Rendimiento Periódico: {(capRate * 100).toFixed(2)}%</label>
+                <input
+                  type="range"
+                  min="0.002"
+                  max="0.05"
                   step="0.001"
-                  value={periodicRate}
-                  onChange={(e) => setPeriodicRate(parseFloat(e.target.value) || 0)}
-                  className="w-full text-sm px-3 py-2 bg-neutral-50 border border-neutral-200 rounded-lg focus:outline-none focus:border-red-500 focus:bg-white transition-colors"
+                  value={capRate}
+                  onChange={(e) => setCapRate(parseFloat(e.target.value))}
+                  className="w-full h-1.5 bg-neutral-100 rounded-lg appearance-none cursor-pointer accent-amber-500 mt-3"
                 />
               </div>
+
               <div>
-                <label className="block text-xs font-medium text-neutral-600 mb-1">Número de Meses (N)</label>
+                <label className="block text-xs font-bold text-neutral-700 mb-1.5">Número de Meses</label>
                 <input
                   type="number"
-                  value={periods}
-                  onChange={(e) => setPeriods(parseInt(e.target.value) || 1)}
-                  className="w-full text-sm px-3 py-2 bg-neutral-50 border border-neutral-200 rounded-lg focus:outline-none focus:border-red-500 focus:bg-white transition-colors"
+                  value={capPeriods}
+                  onChange={(e) => setCapPeriods(Math.max(1, parseInt(e.target.value) || 1))}
+                  className="w-full text-xs px-3.5 py-2.5 bg-neutral-50 border border-neutral-200 rounded-xl focus:outline-none focus:border-red-500 focus:bg-white transition-colors"
                 />
               </div>
             </div>
-          </div>
 
-          {/* Run Button */}
-          <button
-            onClick={handleExecute}
-            className="w-full py-3 px-4 rounded-xl bg-red-600 text-white font-semibold text-sm hover:bg-red-700 active:scale-[0.98] transition-all cursor-pointer shadow-md hover:shadow-lg flex items-center justify-center space-x-2 border-2 border-transparent hover:border-amber-400"
-          >
-            <span>Ejecutar y Loggear Pruebas</span>
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M5.25 5.653c0-.856.917-1.398 1.667-.986l11.54 6.347a1.125 1.125 0 0 1 0 1.972l-11.54 6.347a1.125 1.125 0 0 1-1.667-.986V5.653Z" />
-            </svg>
-          </button>
-        </div>
-
-        {/* Simulated Output / Logs */}
-        <div className="lg:col-span-7 bg-neutral-900 border border-neutral-800 rounded-2xl p-6 shadow-xl flex flex-col h-[520px]">
-          <div className="flex justify-between items-center border-b border-neutral-850 pb-4 mb-4">
-            <div className="flex items-center space-x-2">
-              <span className="h-3.5 w-3.5 rounded-full bg-red-500 animate-pulse"></span>
-              <span className="text-xs font-mono font-bold text-neutral-300">CONSOLA SIMULADA DE EQUI UD</span>
+            {/* Line Chart Visualizer */}
+            <div className="grid grid-cols-1 gap-8">
+              <RosenLineChart
+                title="Crecimiento de Ahorro Acumulado"
+                subtitle="Comparación entre Depósito Único con Interés Compuesto vs Ahorro Constante Mensual"
+                periods={Array.from({ length: capPeriods + 1 }, (_, i) => i)}
+                series={[
+                  {
+                    name: `Depósito Único Inicial ($${capAmount})`,
+                    data: [capAmount, ...compoundSchedule.map((p) => p.endingBalance)],
+                    color: '#A91D22'
+                  },
+                  {
+                    name: `Depósitos Mensuales Recurrentes ($${capAmount}/mes)`,
+                    data: [0, ...annuitySchedule.map((p) => p.endingBalance)],
+                    color: '#F4C430'
+                  }
+                ]}
+              />
             </div>
-            <button
-              onClick={() => setConsoleLogs([])}
-              className="text-neutral-500 hover:text-neutral-300 text-xs font-mono px-2 py-1 rounded bg-neutral-800 transition-colors cursor-pointer"
-            >
-              clear
-            </button>
-          </div>
 
-          {/* Log Content Area */}
-          <div className="flex-grow font-mono text-xs overflow-y-auto space-y-2.5 text-neutral-300 scrollbar-thin scrollbar-thumb-neutral-800 pr-2">
-            {consoleLogs.length === 0 ? (
-              <p className="text-neutral-500 italic">No hay logs generados. Haz click en "Ejecutar y Loggear Pruebas" para iniciar.</p>
-            ) : (
-              consoleLogs.map((log, idx) => {
-                let textStyle = "text-neutral-300";
-                if (log.includes("❌")) textStyle = "text-red-400";
-                if (log.includes("👉")) textStyle = "text-emerald-400";
-                if (log.includes("===")) textStyle = "text-amber-400 font-semibold";
-                return (
-                  <div key={idx} className={`${textStyle} break-words leading-relaxed`}>
-                    {log}
-                  </div>
-                );
-              })
-            )}
-          </div>
+            {/* Detail Tables Grid */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+              {/* Compound Table */}
+              <div className="bg-white/60 backdrop-blur-xl border border-neutral-100 rounded-3xl p-6 shadow-sm">
+                <h4 className="text-xs font-bold text-red-700 uppercase tracking-wide mb-3">
+                  Detalle: Depósito Único
+                </h4>
+                <div className="overflow-x-auto max-h-[250px] scrollbar-thin">
+                  <table className="w-full text-left text-xs">
+                    <thead>
+                      <tr className="border-b border-neutral-100 bg-neutral-50/50">
+                        <th className="py-2 px-3 font-semibold text-neutral-600">Mes</th>
+                        <th className="py-2 px-3 font-semibold text-neutral-600">Saldo Inicial</th>
+                        <th className="py-2 px-3 font-semibold text-neutral-600">Interés</th>
+                        <th className="py-2 px-3 font-semibold text-neutral-600">Saldo Final</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {compoundSchedule.map((row, idx) => (
+                        <tr key={idx} className="border-b border-neutral-50 hover:bg-neutral-50/30">
+                          <td className="py-2 px-3 font-mono">{row.period}</td>
+                          <td className="py-2 px-3 font-mono">${row.beginningBalance.toFixed(2)}</td>
+                          <td className="py-2 px-3 font-mono text-emerald-600">${row.interest.toFixed(2)}</td>
+                          <td className="py-2 px-3 font-mono font-medium">${row.endingBalance.toFixed(2)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
 
-          {/* Terminal Footer Tip */}
-          <div className="mt-4 pt-4 border-t border-neutral-850 text-[10px] font-mono text-neutral-500 flex justify-between">
-            <span>UDFJC - Ingeniería Económica</span>
-            <span>PRESIONA F12 PARA VER CONSOLE.TABLE</span>
+              {/* Annuity Table */}
+              <div className="bg-white/60 backdrop-blur-xl border border-neutral-100 rounded-3xl p-6 shadow-sm">
+                <h4 className="text-xs font-bold text-amber-600 uppercase tracking-wide mb-3">
+                  Detalle: Ahorro Mensual Recurrente
+                </h4>
+                <div className="overflow-x-auto max-h-[250px] scrollbar-thin">
+                  <table className="w-full text-left text-xs">
+                    <thead>
+                      <tr className="border-b border-neutral-100 bg-neutral-50/50">
+                        <th className="py-2 px-3 font-semibold text-neutral-600">Mes</th>
+                        <th className="py-2 px-3 font-semibold text-neutral-600">Depósito</th>
+                        <th className="py-2 px-3 font-semibold text-neutral-600">Interés</th>
+                        <th className="py-2 px-3 font-semibold text-neutral-600">Saldo Final</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {annuitySchedule.map((row, idx) => (
+                        <tr key={idx} className="border-b border-neutral-50 hover:bg-neutral-50/30">
+                          <td className="py-2 px-3 font-mono">{row.period}</td>
+                          <td className="py-2 px-3 font-mono">${row.deposit.toFixed(2)}</td>
+                          <td className="py-2 px-3 font-mono text-emerald-600">${row.interest.toFixed(2)}</td>
+                          <td className="py-2 px-3 font-mono font-medium">${row.endingBalance.toFixed(2)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+
           </div>
-        </div>
+        )}
+
+        {/* ======================================================= */}
+        {/* TAB 4: EDUCACIÓN */}
+        {/* ======================================================= */}
+        {activeTab === 'educacion' && (
+          <EducationalSection />
+        )}
+
       </div>
     </div>
   );
