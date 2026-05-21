@@ -14,9 +14,10 @@ interface RosenBarChartProps {
   data: BarItem[];
   title?: string;
   subtitle?: string;
+  currencySymbol?: string;
 }
 
-export function RosenBarChart({ data, title, subtitle }: RosenBarChartProps) {
+export function RosenBarChart({ data, title, subtitle, currencySymbol = '$' }: RosenBarChartProps) {
   const [hoveredIdx, setHoveredIdx] = useState<number | null>(null);
 
   const maxValue = Math.max(...data.map((d) => d.value), 1);
@@ -65,7 +66,7 @@ export function RosenBarChart({ data, title, subtitle }: RosenBarChartProps) {
                   fontSize="9"
                   className="font-mono select-none"
                 >
-                  ${val}
+                  {currencySymbol}{val}
                 </text>
               </g>
             );
@@ -117,7 +118,7 @@ export function RosenBarChart({ data, title, subtitle }: RosenBarChartProps) {
                   fontWeight={isHovered ? '700' : '500'}
                   className="font-mono transition-all duration-200"
                 >
-                  ${item.value.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                  {currencySymbol}{item.value.toLocaleString(undefined, { maximumFractionDigits: 0 })}
                 </text>
 
                 {/* X Axis Label */}
@@ -142,7 +143,7 @@ export function RosenBarChart({ data, title, subtitle }: RosenBarChartProps) {
           <div className="absolute top-10 left-1/2 -translate-x-1/2 bg-neutral-900/90 text-white backdrop-blur-md border border-neutral-800 rounded-lg p-2.5 shadow-lg text-xs font-mono z-10 transition-opacity">
             <span className="font-semibold block text-red-400">{data[hoveredIdx].label}</span>
             <span className="text-neutral-400 mt-1 block">
-              Interés: <strong className="text-white">${data[hoveredIdx].value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</strong>
+              Interés: <strong className="text-white">{currencySymbol}{data[hoveredIdx].value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</strong>
             </span>
           </div>
         )}
@@ -166,9 +167,10 @@ interface RosenLineChartProps {
   title?: string;
   subtitle?: string;
   yAxisLabel?: string;
+  currencySymbol?: string;
 }
 
-export function RosenLineChart({ series, periods, title, subtitle, yAxisLabel }: RosenLineChartProps) {
+export function RosenLineChart({ series, periods, title, subtitle, yAxisLabel, currencySymbol = '$' }: RosenLineChartProps) {
   const [activeDot, setActiveDot] = useState<{ seriesIdx: number; dotIdx: number; x: number; y: number } | null>(null);
 
   // Validaciones básicas
@@ -247,7 +249,7 @@ export function RosenLineChart({ series, periods, title, subtitle, yAxisLabel }:
                   fontSize="8"
                   className="font-mono select-none"
                 >
-                  ${parseFloat(val).toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                  {currencySymbol}{parseFloat(val).toLocaleString(undefined, { maximumFractionDigits: 0 })}
                 </text>
               </g>
             );
@@ -349,7 +351,7 @@ export function RosenLineChart({ series, periods, title, subtitle, yAxisLabel }:
             <span className="text-neutral-400 block">
               Valor:{' '}
               <strong className="text-white">
-                ${series[activeDot.seriesIdx].data[activeDot.dotIdx].toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                {currencySymbol}{series[activeDot.seriesIdx].data[activeDot.dotIdx].toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
               </strong>
             </span>
           </div>

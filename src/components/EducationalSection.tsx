@@ -78,7 +78,7 @@ export default function EducationalSection() {
                   <span className="text-xl">{scen.icon}</span>
                   <div>
                     <span className="text-sm font-bold block leading-tight">{scen.title}</span>
-                    <span className="text-[11px] text-neutral-500 font-medium block mt-0.5">
+                    <span className="text-xs text-neutral-500 font-medium block mt-0.5">
                       {scen.id === 'advance-loans' && 'Conversión de Tasas'}
                       {scen.id === 'french-vs-german' && 'Amortizaciones'}
                       {scen.id === 'capitalization-compound' && 'Ahorro y Capitalización'}
@@ -91,7 +91,7 @@ export default function EducationalSection() {
         </div>
 
         {/* Dynamic Detail Card */}
-        <div className="lg:col-span-8 bg-neutral-50/50 border border-neutral-100 rounded-3xl p-6 sm:p-8 flex flex-col justify-between">
+        <div className="lg:col-span-8 bg-neutral-50/50 border border-neutral-200 rounded-3xl p-6 sm:p-8 flex flex-col justify-between">
           <div className="space-y-5">
             <div className="flex items-center space-x-3">
               <span className="text-3xl">{currentScenario.icon}</span>
@@ -100,34 +100,36 @@ export default function EducationalSection() {
               </h3>
             </div>
             
-            <p className="text-neutral-600 text-sm leading-relaxed">
+            <p className="text-neutral-700 text-base leading-relaxed">
               {currentScenario.description}
             </p>
 
             {/* Academic Tip (UD Styled) */}
-            <div className="bg-white border-l-4 border-amber-500 rounded-r-2xl p-4 shadow-xs">
-              <span className="text-xs font-bold text-amber-600 uppercase tracking-wider block mb-1">
+            <div className="bg-white border-l-4 border-amber-500 rounded-r-2xl p-5 shadow-xs">
+              <span className="text-sm font-bold text-amber-600 uppercase tracking-wider block mb-1">
                 💡 Caso Práctico Académico
               </span>
-              <p className="text-neutral-700 text-xs leading-relaxed font-medium">
+              <p className="text-neutral-800 text-sm leading-relaxed font-medium">
                 {currentScenario.udTip}
               </p>
             </div>
 
             {/* Math Formula Expl */}
-            <div className="bg-white border border-neutral-150 rounded-2xl p-4 font-mono text-[11px] text-neutral-600 space-y-1">
-              <span className="font-sans font-bold text-neutral-800 text-xs block mb-1">Fórmula Aplicada</span>
-              <p className="text-red-700 font-semibold">{currentScenario.formulaExpl}</p>
+            <div className="bg-white border border-neutral-200 rounded-2xl p-5 font-mono text-sm text-neutral-700 space-y-2 shadow-xs">
+              <span className="font-sans font-bold text-neutral-900 text-sm block mb-1">Fórmula Aplicada</span>
+              <p className="text-red-700 font-semibold text-sm sm:text-base leading-relaxed select-all bg-red-50/30 p-2.5 rounded-lg border border-red-500/10">
+                {currentScenario.formulaExpl}
+              </p>
             </div>
           </div>
 
           {/* Recommendation Box */}
-          <div className="mt-6 pt-5 border-t border-neutral-100">
-            <div className="bg-red-500/5 border border-red-500/10 rounded-2xl p-4">
-              <span className="text-xs font-bold text-red-700 uppercase tracking-wider block mb-1">
+          <div className="mt-6 pt-5 border-t border-neutral-200">
+            <div className="bg-red-500/5 border border-red-500/10 rounded-2xl p-5">
+              <span className="text-sm font-bold text-red-700 uppercase tracking-wider block mb-1">
                 📌 Recomendación de Equis UD
               </span>
-              <p className="text-red-950 text-xs leading-relaxed font-semibold">
+              <p className="text-red-950 text-sm leading-relaxed font-semibold">
                 {currentScenario.recommendation}
               </p>
             </div>
