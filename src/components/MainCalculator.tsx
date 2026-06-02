@@ -241,7 +241,7 @@ export default function MainCalculator() {
       </div>
 
       {/* SPA DYNAMIC TAB WRAPPER */}
-      <div className="tab-content-wrapper min-h-[480px]">
+      <div className="tab-content-wrapper min-h-120">
         
         {/* ======================================================= */}
         {/* TAB 1: CONVERSIÓN DE TASAS */}
@@ -368,7 +368,7 @@ export default function MainCalculator() {
 
               {/* Outputs Displays */}
               <div className="mt-8 pt-6 border-t border-neutral-100 grid grid-cols-2 gap-4">
-                <div className="bg-gradient-to-br from-red-50 to-white rounded-2xl p-5 border border-red-100 shadow-xs flex flex-col justify-between">
+                <div className="bg-linear-to-br from-red-50 to-white rounded-2xl p-5 border border-red-100 shadow-xs flex flex-col justify-between">
                   <span className="text-xs font-extrabold text-red-600 uppercase tracking-wider block">
                     Efectiva Anual Calc (i)
                   </span>
@@ -376,7 +376,7 @@ export default function MainCalculator() {
                     {(iResult * 100).toFixed(4)}%
                   </span>
                 </div>
-                <div className="bg-gradient-to-br from-amber-50 to-white rounded-2xl p-5 border border-amber-100 shadow-xs flex flex-col justify-between">
+                <div className="bg-linear-to-br from-amber-50 to-white rounded-2xl p-5 border border-amber-100 shadow-xs flex flex-col justify-between">
                   <span className="text-xs font-extrabold text-amber-600 uppercase tracking-wider block">
                     Nominal Anual Calc (j)
                   </span>
@@ -487,7 +487,7 @@ export default function MainCalculator() {
 
               {/* Output Results */}
               <div className="mt-8 pt-6 border-t border-neutral-100 grid grid-cols-2 gap-4">
-                <div className="bg-gradient-to-br from-red-50 to-white rounded-2xl p-5 border border-red-100 shadow-xs flex flex-col justify-between">
+                <div className="bg-linear-to-br from-red-50 to-white rounded-2xl p-5 border border-red-100 shadow-xs flex flex-col justify-between">
                   <span className="text-xs font-extrabold text-red-600 uppercase tracking-wider block">
                     Anticipada Equiv (ia)
                   </span>
@@ -495,7 +495,7 @@ export default function MainCalculator() {
                     {(iaResult * 100).toFixed(4)}%
                   </span>
                 </div>
-                <div className="bg-gradient-to-br from-amber-50 to-white rounded-2xl p-5 border border-amber-100 shadow-xs flex flex-col justify-between">
+                <div className="bg-linear-to-br from-amber-50 to-white rounded-2xl p-5 border border-amber-100 shadow-xs flex flex-col justify-between">
                   <span className="text-xs font-extrabold text-amber-600 uppercase tracking-wider block">
                     Vencida Equiv (iv)
                   </span>
@@ -507,7 +507,7 @@ export default function MainCalculator() {
             </div>
 
             {/* Quick Educational Callout */}
-            <div className="lg:col-span-2 bg-gradient-to-r from-red-600/5 to-amber-500/5 border border-red-500/10 rounded-2xl p-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+            <div className="lg:col-span-2 bg-linear-to-r from-red-600/5 to-amber-500/5 border border-red-500/10 rounded-2xl p-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
               <div className="space-y-1">
                 <span className="text-sm font-bold text-red-700 block">🧑‍🏫 Tip del Profesor de Ingeniería Económica</span>
                 <p className="text-sm text-neutral-700 max-w-4xl leading-relaxed font-medium">
