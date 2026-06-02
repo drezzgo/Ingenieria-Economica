@@ -110,16 +110,24 @@ export function calculateFrenchAmortization(
 
   for (let t = 1; t <= periods; t++) {
     const interest = balance * periodicRate;
-    const principalPaid = periodicRate === 0 ? payment : payment - interest;
-    const endingBalance = Math.max(0, balance - principalPaid);
+    let principalPaid = periodicRate === 0 ? payment : payment - interest;
+    let currentPayment = payment;
+
+    // Ajuste en la última cuota o si por redondeo se paga más del saldo
+    if (t === periods || principalPaid > balance) {
+      principalPaid = balance;
+      currentPayment = principalPaid + interest;
+    }
+
+    const endingBalance = balance - principalPaid;
 
     schedule.push({
       period: t,
       beginningBalance: balance,
-      payment: payment,
+      payment: currentPayment,
       interest: interest,
       principal: principalPaid,
-      endingBalance: endingBalance
+      endingBalance: Math.abs(endingBalance) < 1e-10 ? 0 : endingBalance
     });
 
     balance = endingBalance;
@@ -153,16 +161,23 @@ export function calculateGermanAmortization(
 
   for (let t = 1; t <= periods; t++) {
     const interest = balance * periodicRate;
-    const payment = principalPaid + interest;
-    const endingBalance = Math.max(0, balance - principalPaid);
+    let actualPrincipalPaid = principalPaid;
+    
+    // Ajuste en la última cuota o si el abono supera el saldo por precisión
+    if (t === periods || actualPrincipalPaid > balance) {
+      actualPrincipalPaid = balance;
+    }
+
+    const payment = actualPrincipalPaid + interest;
+    const endingBalance = balance - actualPrincipalPaid;
 
     schedule.push({
       period: t,
       beginningBalance: balance,
       payment: payment,
       interest: interest,
-      principal: principalPaid,
-      endingBalance: endingBalance
+      principal: actualPrincipalPaid,
+      endingBalance: Math.abs(endingBalance) < 1e-10 ? 0 : endingBalance
     });
 
     balance = endingBalance;
@@ -197,7 +212,7 @@ export function calculateCompoundCapitalization(
     schedule.push({
       period: t,
       beginningBalance: balance,
-      deposit: t === 1 ? principal : 0, // El depósito inicial se reporta solo en el período 1
+      deposit: 0, // El depósito inicial se hizo en t=0, por lo que en t>=1 es 0
       interest: interest,
       endingBalance: endingBalance
     });
